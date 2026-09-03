@@ -1,7 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { lookupOrderByNumber, createReturnOrder } from "@/lib/ongoing";
-import { createReturnLabel } from "@/lib/webshipper";
+import { lookupOrderByNumber, createReturnOrder, getArticlePackageInfo } from "@/lib/ongoing";
+import { createReturnLabel, type PackageDimensions } from "@/lib/webshipper";
 import { RETURN_REASONS, type ReturnRequest, type ReturnRequestResult } from "@/lib/types";
+import { env } from "@/lib/env";
+
+/**
+ * Slår sammen vekt/mål for de valgte varelinjene til én samlet pakke som
+ * sendes til Webshipper. Vekt summeres. For mål (som ikke kan summeres
+ * direkte når flere ulike varer pakkes sammen) regner vi ut totalvolumet og
+ * lager en "terning" med tilsvarende volum - en forenkling, men den sikrer
+ * at pakken alltid får realistiske mål fremfor faste minstemål.
+ * Varer uten registrerte mål i Ongoing faller tilbake på konfigurerte
+ * standardmål (se .env.example).
+ */
+async function buildPackageDimensions(
+  lines: { articleNumber: string; quantity: number }[]
+): Promise<PackageDimensions> {
+  const info = await getArticlePackageInfo(lines.map((l) => l.articleNumber));
+
+  let totalWeightGrams = 0;
+  let totalVolumeCm3 = 0;
+
+  for (const line of lines) {
+    const a = info.get(line.articleNumber);
+    const weightGrams = a?.weightKg ? a.weightKg * 1000 : env.defaultItemWeightGrams;
+    const lengthCm = a?.lengthM ? a.lengthM * 100 : env.defaultItemLengthCm;
+    const widthCm = a?.widthM ? a.widthM * 100 : env.defaultItemWidthCm;
+    const heightCm = a?.heightM ? a.heightM * 100 : env.defaultItemHeightCm;
+
+    totalWeightGrams += weightGrams * line.quantity;
+    totalVolumeCm3 += lengthCm * widthCm * heightCm * line.quantity;
+  }
+
+  const cubeSideCm = Math.max(5, Math.ceil(Math.cbrt(totalVolumeCm3)));
+
+  return {
+    weightGrams: Math.max(1, Math.round(totalWeightGrams)),
+    lengthCm: cubeSideCm,
+    widthCm: cubeSideCm,
+    heightCm: cubeSideCm,
+  };
+}
 
 function isValidReturnRequest(body: unknown): body is ReturnRequest {
   if (!body || typeof body !== "object") return false;
@@ -65,7 +104,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 1) Opprett returforsendelse hos Webshipper og hent fraktetikett.
+  // 1) Hent vekt/mål for varene som returneres fra Ongoing, og opprett
+  //    returforsendelse hos Webshipper for å hente fraktetikett.
+  const packageDimensions = await buildPackageDimensions(body.lines);
+
   const label = await createReturnLabel({
     reference: body.orderNumber,
     customer: {
@@ -77,6 +119,7 @@ export async function POST(req: NextRequest) {
       email: body.email,
       phone: body.phone,
     },
+    package: packageDimensions,
   });
 
   if (!label.success) {
