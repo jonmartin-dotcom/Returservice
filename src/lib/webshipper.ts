@@ -165,14 +165,17 @@ export async function createReturnLabel(
   // ganger med kort mellomrom hvis den ikke er klar ennå.
   const label = await fetchLabelForShipment(shipmentId);
 
+  // Logges til Vercel sine funksjonslogger (Deployments -> velg deployment ->
+  // fanen "Logs" eller "Runtime Logs") slik at vi kan se nøyaktig hva
+  // Webshipper svarte, i tilfelle etiketten fortsatt ikke hentes automatisk.
+  console.log("[webshipper] shipmentId=%s labelLookup=%o", shipmentId, label);
+
   if (!label.base64PDF) {
     return {
       success: true,
       trackingNumber,
       trackingUrl,
-      errorMessage: label.labelId
-        ? undefined
-        : "Forsendelse opprettet, men fant ingen etikett for den hos Webshipper.",
+      errorMessage: `Fant ikke etikett-PDF automatisk (shipmentId=${shipmentId}, ${label.diagnostic || "ingen diagnostikk"}). Se Vercel-loggene for detaljer, eller sjekk forsendelsen direkte i Webshipper.`,
     };
   }
 
@@ -187,43 +190,74 @@ export async function createReturnLabel(
 interface LabelLookupResult {
   labelId?: string;
   base64PDF?: string;
+  diagnostic?: string;
 }
 
 async function fetchLabelForShipment(shipmentId: string): Promise<LabelLookupResult> {
   const maxAttempts = 5;
   const delayMs = 800;
+  let lastDiagnostic = "";
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const res = await webshipperFetch(
         `/labels?filter[shipment_id]=${encodeURIComponent(shipmentId)}`
       );
+      const bodyText = await res.text();
+      let json: unknown = null;
+      try {
+        json = JSON.parse(bodyText);
+      } catch {
+        // ikke gyldig JSON - fortsetter med diagnostikk under
+      }
+      console.log(
+        "[webshipper] labels?filter[shipment_id]=%s (forsøk %d) status=%d body=%s",
+        shipmentId,
+        attempt + 1,
+        res.status,
+        bodyText.slice(0, 500)
+      );
+
       if (res.ok) {
-        const json = await res.json().catch(() => null);
-        const entry = Array.isArray(json?.data) ? json.data[0] : null;
+        const j = json as { data?: Array<{ id?: string; attributes?: { base64?: string } }> } | null;
+        const entry = Array.isArray(j?.data) ? j?.data[0] : undefined;
         const base64: string | undefined = entry?.attributes?.base64 || undefined;
         if (entry?.id && base64) {
           return { labelId: entry.id, base64PDF: base64 };
         }
-        // Etiketten finnes men er ikke ferdig generert ennå (base64 er null) -
-        // hent den direkte på ID-en i tilfelle det gir et ferskere svar.
         if (entry?.id) {
+          // Etiketten finnes men er ikke ferdig generert ennå (base64 er null) -
+          // hent den direkte på ID-en i tilfelle det gir et ferskere svar.
           const directRes = await webshipperFetch(`/labels/${entry.id}`);
+          const directBodyText = await directRes.text();
+          console.log(
+            "[webshipper] labels/%s (forsøk %d) status=%d body=%s",
+            entry.id,
+            attempt + 1,
+            directRes.status,
+            directBodyText.slice(0, 500)
+          );
           if (directRes.ok) {
-            const directJson = await directRes.json().catch(() => null);
-            const directBase64: string | undefined = directJson?.data?.attributes?.base64;
+            const directJson = JSON.parse(directBodyText || "null") as {
+              data?: { attributes?: { base64?: string } };
+            } | null;
+            const directBase64 = directJson?.data?.attributes?.base64;
             if (directBase64) return { labelId: entry.id, base64PDF: directBase64 };
           }
-          if (attempt === maxAttempts - 1) return { labelId: entry.id };
+          lastDiagnostic = `etikett-ID ${entry.id} funnet, men base64 fortsatt tom etter ${attempt + 1} forsøk`;
+        } else {
+          lastDiagnostic = `ingen etikett i listen ennå (status ${res.status}) etter ${attempt + 1} forsøk`;
         }
+      } else {
+        lastDiagnostic = `filter-kall feilet med status ${res.status}: ${bodyText.slice(0, 200)}`;
       }
-    } catch {
-      // Prøver igjen under neste runde.
+    } catch (err) {
+      lastDiagnostic = `nettverksfeil: ${(err as Error).message}`;
     }
     if (attempt < maxAttempts - 1) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
-  return {};
+  return { diagnostic: lastDiagnostic };
 }
