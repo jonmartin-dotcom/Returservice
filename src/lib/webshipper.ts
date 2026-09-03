@@ -49,9 +49,18 @@ export interface CustomerAddress {
   phone?: string;
 }
 
+export interface PackageDimensions {
+  weightGrams: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+}
+
 export interface CreateReturnLabelParams {
   reference: string; // f.eks. returordrenummeret, for sporbarhet i Webshipper
   customer: CustomerAddress;
+  /** Pakkens vekt og mål. Webshipper krever enten volum eller mål på pakken. */
+  package: PackageDimensions;
 }
 
 export interface CreateReturnLabelResult {
@@ -78,7 +87,18 @@ export async function createReturnLabel(
         reference: params.reference,
         service_code: env.webshipperServiceCode,
         is_return: true,
-        packages: [{ weight: 1000, weight_unit: "g" }],
+        packages: [
+          {
+            weight: params.package.weightGrams,
+            weight_unit: "g",
+            dimensions: {
+              length: params.package.lengthCm,
+              width: params.package.widthCm,
+              height: params.package.heightCm,
+              unit: "cm",
+            },
+          },
+        ],
         // Ved en returforsendelse er avsender kunden, og mottaker lageret.
         // NB: Webshipper sitt adresseskjema bruker andre feltnavn enn det man
         // skulle tro - "name" finnes ikke, personnavn skal i "att_contact",
