@@ -167,8 +167,11 @@ export async function POST(req: NextRequest) {
     trackingNumber: label.trackingNumber,
     labelPdfBase64: label.labelPdfBase64,
     labelUrl: label.trackingUrl,
+    // NB midlertidig: viser diagnostikk-detaljene fra Webshipper i klartekst
+    // her mens vi feilsøker etikett-hentingen sammen. Bytt ut med en enklere
+    // kundevendt tekst (uten "label.errorMessage") når dette er stabilt.
     warning: !label.labelPdfBase64
-      ? "Returen er registrert og sporingsnummer er opprettet, men fraktetiketten kunne ikke hentes automatisk. Ta kontakt med kundeservice for å få tilsendt etiketten."
+      ? `Returen er registrert og sporingsnummer er opprettet, men fraktetiketten kunne ikke hentes automatisk. ${label.errorMessage || ""}`.trim()
       : undefined,
   };
   return NextResponse.json(result);
