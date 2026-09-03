@@ -92,7 +92,13 @@ function pickConsigneeField(
   }
 
   // Noen WMS-er nøster adressefeltene under et eget "address"-objekt.
-  const nestedCandidates = ["address", "consigneeAddress", "deliveryAddress"];
+  const nestedCandidates = [
+    "address",
+    "consigneeAddress",
+    "deliveryAddress",
+    "advanced",
+    "invoiceAddress",
+  ];
   for (const nestedKey of nestedCandidates) {
     const nested = consignee[nestedKey];
     if (nested && typeof nested === "object") {
@@ -147,7 +153,10 @@ export async function lookupOrderByNumber(orderNumber: string): Promise<OrderLoo
   // Midlertidig diagnostikk (se Vercel -> Logs): viser nøyaktig hvilke
   // feltnavn Ongoing faktisk bruker på consignee-objektet, slik at vi kan
   // bekrefte/justere feltnavnene under ved behov.
-  console.log("[ongoing] consignee=%o", order.consignee);
+  // Bruker JSON.stringify (ikke %o) slik at nøstede objekter som "advanced"
+  // og "invoiceAddress" - der telefon/e-post trolig ligger - vises fullt ut
+  // i loggen i stedet for forkortet til "{…}".
+  console.log("[ongoing] consignee=" + JSON.stringify(order.consignee, null, 2));
 
   const lines: OrderLineForCustomer[] = (order.orderLines || []).map((line) => ({
     orderLineId: line.id,
