@@ -161,8 +161,27 @@ export default function ReturPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logoSlot}>
-          <div className={styles.logoPlaceholder}>LOGO</div>
-          <h1 className={styles.title}>Returservice</h1>
+          {/* Enkelt løv-merke som plassholder for Nesco sin logo - bytt ut
+              med den offisielle logofilen når dere har den klar (se
+              README.md for hvor). */}
+          <div className={styles.logoPlaceholder} aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M4 20C4 11 10 4 20 4C20 14 13 20 4 20Z"
+                fill="currentColor"
+              />
+              <path
+                d="M4 20C8 16 12 12 18 6"
+                stroke="var(--surface)"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <div>
+            <div className={styles.brandName}>Nesco</div>
+            <h1 className={styles.title}>Returservice</h1>
+          </div>
         </div>
 
         {step === "order" && (
