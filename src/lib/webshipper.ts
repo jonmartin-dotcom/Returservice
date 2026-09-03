@@ -63,21 +63,30 @@ export interface CreateReturnLabelParams {
   package: PackageDimensions;
 }
 
-export interface CreateReturnLabelResult {
+export interface CreateReturnShipmentResult {
   success: boolean;
+  shipmentId?: string;
   trackingNumber?: string;
   trackingUrl?: string;
-  labelPdfBase64?: string;
   errorMessage?: string;
 }
 
 /**
- * Oppretter en returforsendelse hos Webshipper (kunde -> lager) og henter ut
- * fraktetiketten som PDF (base64), slik at kunden kan skrive den ut selv.
+ * Oppretter selve returforsendelsen hos Webshipper (kunde -> lager) og
+ * returnerer sporingsnummeret med det samme.
+ *
+ * NB: Denne oppretter KUN forsendelsen - den venter ikke på selve
+ * etikett-PDF-en (se fetchLabelForShipment under for det). Grunnen til at
+ * dette er delt i to steg: Vercel sin gratis Hobby-plan avbryter
+ * funksjonskall som tar mer enn ca. 10 sekunder, og etikett-PDF-en kan noen
+ * ganger ta litt tid å bli klar hos Webshipper. Ved å opprette
+ * returordren i Ongoing rett etter dette steget (før vi venter på
+ * etiketten), er returen trygt registrert selv om etikett-hentingen skulle
+ * bruke for lang tid.
  */
-export async function createReturnLabel(
+export async function createReturnShipment(
   params: CreateReturnLabelParams
-): Promise<CreateReturnLabelResult> {
+): Promise<CreateReturnShipmentResult> {
   const warehouse = env.warehouseAddress;
 
   const shipmentBody = {
@@ -159,47 +168,26 @@ export async function createReturnLabel(
     };
   }
 
-  // Etiketten er en egen ressurs (labels) som Webshipper genererer i
-  // bakgrunnen når forsendelsen opprettes - den er ikke alltid klar med det
-  // samme. Vi finner den via GET /labels?filter[shipment_id]=X og prøver noen
-  // ganger med kort mellomrom hvis den ikke er klar ennå.
-  const label = await fetchLabelForShipment(shipmentId);
-
-  // Logges til Vercel sine funksjonslogger (Deployments -> velg deployment ->
-  // fanen "Logs" eller "Runtime Logs") slik at vi kan se nøyaktig hva
-  // Webshipper svarte, i tilfelle etiketten fortsatt ikke hentes automatisk.
-  console.log("[webshipper] shipmentId=%s labelLookup=%o", shipmentId, label);
-
-  if (!label.base64PDF) {
-    // Kundevendt melding holdes enkel med vilje - de tekniske detaljene
-    // (shipmentId, HTTP-status osv.) er allerede logget over til Vercel sine
-    // funksjonslogger for feilsøking.
-    return {
-      success: true,
-      trackingNumber,
-      trackingUrl,
-      errorMessage:
-        "Fraktetiketten kunne ikke hentes automatisk akkurat nå. Ta kontakt med kundeservice, så sender vi den til deg.",
-    };
-  }
-
-  return {
-    success: true,
-    trackingNumber,
-    trackingUrl,
-    labelPdfBase64: label.base64PDF,
-  };
+  return { success: true, shipmentId, trackingNumber, trackingUrl };
 }
 
-interface LabelLookupResult {
+export interface LabelLookupResult {
   labelId?: string;
   base64PDF?: string;
   diagnostic?: string;
 }
 
-async function fetchLabelForShipment(shipmentId: string): Promise<LabelLookupResult> {
-  const maxAttempts = 5;
-  const delayMs = 800;
+/**
+ * Prøver å hente selve etikett-PDF-en for en forsendelse som allerede er
+ * opprettet. Kalles ETTER at returordren er registrert i Ongoing, slik at
+ * returen uansett er trygt registrert selv om dette skulle ta for lang tid
+ * eller feile. Holdt med et lite antall forsøk med vilje, for å ikke risikere
+ * å sprenge Vercel sin (Hobby-plan) 10-sekunders grense på det totale
+ * funksjonskallet.
+ */
+export async function fetchLabelForShipment(shipmentId: string): Promise<LabelLookupResult> {
+  const maxAttempts = 3;
+  const delayMs = 500;
   let lastDiagnostic = "";
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
