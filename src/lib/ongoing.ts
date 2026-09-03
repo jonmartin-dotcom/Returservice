@@ -134,6 +134,73 @@ export async function lookupOrderByNumber(orderNumber: string): Promise<OrderLoo
   };
 }
 
+export interface ArticlePackageInfo {
+  weightKg?: number;
+  lengthM?: number;
+  widthM?: number;
+  heightM?: number;
+}
+
+/**
+ * Henter vekt/mål for et sett med varenumre fra Ongoing (GET /api/v1/articles),
+ * slik at vi kan sende reelle pakkemål til Webshipper i stedet for gjetning.
+ *
+ * NB: Ongoing sin REST v1 dokumentasjon for artikkel-feltnavn var ikke
+ * tilgjengelig i sin helhet da dette ble skrevet. Feltnavn her er derfor
+ * basert på det som er kjent fra Ongoing sitt datamodell for øvrig (vekt i
+ * kg, mål i meter) og sjekkes mot flere vanlige varianter av feltnavn for å
+ * være mest mulig robust. Hvis dette viser seg å ikke stemme mot deres
+ * faktiske API-svar, bruk feilmeldingen/loggen til å justere feltnavnene i
+ * `pickNumber`-kallene under.
+ */
+export async function getArticlePackageInfo(
+  articleNumbers: string[]
+): Promise<Map<string, ArticlePackageInfo>> {
+  const uniqueNumbers = Array.from(new Set(articleNumbers.filter(Boolean)));
+  const result = new Map<string, ArticlePackageInfo>();
+
+  await Promise.all(
+    uniqueNumbers.map(async (articleNumber) => {
+      try {
+        const params = new URLSearchParams({
+          goodsOwnerId: String(env.ongoingGoodsOwnerId),
+          articleNumber,
+        });
+        const res = await ongoingFetch(`/articles?${params.toString()}`);
+        if (!res.ok) return;
+        const json = await res.json().catch(() => null);
+        const article = Array.isArray(json) ? json[0] : json;
+        if (!article || typeof article !== "object") return;
+
+        const a = article as Record<string, unknown>;
+        result.set(articleNumber, {
+          weightKg: pickNumber(a, ["weight", "grossWeight", "netWeight"]),
+          lengthM: pickNumber(a, ["length", "articleLength"]),
+          widthM: pickNumber(a, ["width", "articleWidth"]),
+          heightM: pickNumber(a, ["height", "articleHeight"]),
+        });
+      } catch {
+        // Fortsetter uten mål for denne varen - vi faller tilbake på
+        // standardmål i webshipper.ts-kallet.
+      }
+    })
+  );
+
+  return result;
+}
+
+function pickNumber(obj: Record<string, unknown>, keys: string[]): number | undefined {
+  for (const key of keys) {
+    const value = obj[key];
+    if (typeof value === "number" && value > 0) return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const n = Number(value);
+      if (!Number.isNaN(n) && n > 0) return n;
+    }
+  }
+  return undefined;
+}
+
 export interface CreateReturnOrderParams {
   /** Ongoing sin interne orderId for salgsordren (fra lookupOrderByNumber). */
   orderId: number;
