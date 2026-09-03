@@ -30,6 +30,13 @@ export interface OrderLookupResult {
   orderNumber: string;
   customerName: string;
   customerEmail: string | null;
+  /** Mottakerinfo fra den opprinnelige ordren i Ongoing - brukes til å
+   *  forhåndsutfylle kontaktfeltene i steg 3, som kunden fortsatt kan endre. */
+  customerPhone: string | null;
+  customerStreet: string | null;
+  customerPostalCode: string | null;
+  customerCity: string | null;
+  customerCountryCode: string | null;
   lines: OrderLineForCustomer[];
 }
 
@@ -74,4 +81,7 @@ export interface ReturnRequestResult {
   labelPdfBase64?: string;
   labelUrl?: string;
   error?: string;
+  /** Ikke-kritisk advarsel som fortsatt lar returen regnes som vellykket, f.eks. at
+   *  etiketten ikke kunne hentes automatisk selv om forsendelsen ble opprettet. */
+  warning?: string;
 }
