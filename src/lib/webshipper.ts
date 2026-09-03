@@ -27,8 +27,12 @@ async function webshipperFetch(path: string, init: RequestInit = {}): Promise<Re
     ...init,
     headers: {
       Authorization: `Bearer ${env.webshipperAccessToken}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      // Webshipper følger JSON:API-spesifikasjonen strengt og krever denne
+      // spesifikke content-typen (bekreftet av feilmelding fra deres API:
+      // "All requests that create or update must use the
+      // 'application/vnd.api+json' Content-Type").
+      "Content-Type": "application/vnd.api+json",
+      Accept: "application/vnd.api+json",
       ...(init.headers || {}),
     },
     signal: AbortSignal.timeout(20_000),
