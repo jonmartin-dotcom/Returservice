@@ -59,23 +59,6 @@ interface OngoingOrderLine {
   returnedNumberOfItems?: number;
 }
 
-interface OngoingOrderConsignee {
-  name?: string;
-  emailAddress?: string;
-  // NB: feltnavn her er ikke 100% bekreftet mot GET /orders-svaret (kun
-  // bekreftet mot PostOrderLineModel sitt consignee-objekt, som normalt
-  // følger samme navngiving i Ongoing sin REST API). Hvis feltene under
-  // ikke plukkes opp riktig i praksis, forblir bare kontaktfeltene tomme i
-  // skjemaet - det stopper ikke returflyten.
-  streetAddressLine1?: string;
-  streetAddressLine2?: string;
-  postalCode?: string;
-  city?: string;
-  countryCode?: string;
-  phoneNumber?: string;
-  mobilePhone?: string;
-}
-
 interface OngoingOrderInfo {
   orderId: number;
   orderNumber?: string;
@@ -83,8 +66,42 @@ interface OngoingOrderInfo {
 
 interface OngoingOrderModel {
   orderInfo?: OngoingOrderInfo | null;
-  consignee?: OngoingOrderConsignee | null;
+  // "consignee" er typet løst med vilje (ikke et fast interface) - se
+  // pickConsigneeField under for hvorfor: de eksakte feltnavnene for
+  // adresse/telefon i GET /orders-svaret har vist seg vanskelige å bekrefte
+  // fra dokumentasjonen alene, så vi prøver flere kjente varianter i stedet.
+  consignee?: Record<string, unknown> | null;
   orderLines?: OngoingOrderLine[] | null;
+}
+
+/**
+ * Henter en verdi fra "consignee"-objektet på ordren, og prøver flere kjente
+ * varianter av feltnavn (både flate og eventuelt nøstet under et
+ * "address"/"consigneeAddress"-underobjekt), siden Ongoing sin REST v1
+ * dokumentasjon for disse feltnavnene ikke lot seg bekrefte fullt ut.
+ */
+function pickConsigneeField(
+  consignee: Record<string, unknown> | null | undefined,
+  keys: string[]
+): string | null {
+  if (!consignee) return null;
+
+  for (const key of keys) {
+    const value = consignee[key];
+    if (typeof value === "string" && value.trim() !== "") return value.trim();
+  }
+
+  // Noen WMS-er nøster adressefeltene under et eget "address"-objekt.
+  const nestedCandidates = ["address", "consigneeAddress", "deliveryAddress"];
+  for (const nestedKey of nestedCandidates) {
+    const nested = consignee[nestedKey];
+    if (nested && typeof nested === "object") {
+      const found = pickConsigneeField(nested as Record<string, unknown>, keys);
+      if (found) return found;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -127,6 +144,11 @@ export async function lookupOrderByNumber(orderNumber: string): Promise<OrderLoo
     };
   }
 
+  // Midlertidig diagnostikk (se Vercel -> Logs): viser nøyaktig hvilke
+  // feltnavn Ongoing faktisk bruker på consignee-objektet, slik at vi kan
+  // bekrefte/justere feltnavnene under ved behov.
+  console.log("[ongoing] consignee=%o", order.consignee);
+
   const lines: OrderLineForCustomer[] = (order.orderLines || []).map((line) => ({
     orderLineId: line.id,
     rowNumber: line.rowNumber || String(line.id),
@@ -136,17 +158,39 @@ export async function lookupOrderByNumber(orderNumber: string): Promise<OrderLoo
     alreadyReturnedNumberOfItems: line.returnedNumberOfItems || 0,
   }));
 
+  const consignee = order.consignee || null;
+
   return {
     found: true,
     orderId: order.orderInfo.orderId,
     orderNumber: order.orderInfo.orderNumber || orderNumber,
-    customerName: order.consignee?.name || "",
-    customerEmail: order.consignee?.emailAddress || null,
-    customerPhone: order.consignee?.phoneNumber || order.consignee?.mobilePhone || null,
-    customerStreet: order.consignee?.streetAddressLine1 || null,
-    customerPostalCode: order.consignee?.postalCode || null,
-    customerCity: order.consignee?.city || null,
-    customerCountryCode: order.consignee?.countryCode || null,
+    customerName: pickConsigneeField(consignee, ["name", "consigneeName", "fullName"]) || "",
+    customerEmail: pickConsigneeField(consignee, ["emailAddress", "email"]),
+    customerPhone: pickConsigneeField(consignee, [
+      "phoneNumber",
+      "mobilePhone",
+      "mobileTelephone",
+      "telephone",
+      "phone",
+      "mobile",
+      "cellPhone",
+    ]),
+    customerStreet: pickConsigneeField(consignee, [
+      "streetAddressLine1",
+      "streetAddress1",
+      "address1",
+      "address",
+      "addressLine1",
+      "street",
+    ]),
+    customerPostalCode: pickConsigneeField(consignee, [
+      "postalCode",
+      "postCode",
+      "zipCode",
+      "zip",
+    ]),
+    customerCity: pickConsigneeField(consignee, ["city", "town", "postalArea"]),
+    customerCountryCode: pickConsigneeField(consignee, ["countryCode", "country"]),
     lines,
   };
 }
