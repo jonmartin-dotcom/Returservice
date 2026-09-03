@@ -200,9 +200,11 @@ async function fetchLabelForShipment(shipmentId: string): Promise<LabelLookupRes
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const res = await webshipperFetch(
-        `/labels?filter[shipment_id]=${encodeURIComponent(shipmentId)}`
-      );
+      // Webshipper tillater ikke filter[shipment_id] på /labels (bekreftet av
+      // feilmelding: "Filter not allowed - shipment_id is not allowed").
+      // Riktig vei er i stedet shipment sin egen "labels"-relasjon:
+      // GET /v2/shipments/{id}/labels (bekreftet mot docs.webshipper.io).
+      const res = await webshipperFetch(`/shipments/${encodeURIComponent(shipmentId)}/labels`);
       const bodyText = await res.text();
       let json: unknown = null;
       try {
@@ -211,7 +213,7 @@ async function fetchLabelForShipment(shipmentId: string): Promise<LabelLookupRes
         // ikke gyldig JSON - fortsetter med diagnostikk under
       }
       console.log(
-        "[webshipper] labels?filter[shipment_id]=%s (forsøk %d) status=%d body=%s",
+        "[webshipper] shipments/%s/labels (forsøk %d) status=%d body=%s",
         shipmentId,
         attempt + 1,
         res.status,
