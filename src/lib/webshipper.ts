@@ -80,19 +80,23 @@ export async function createReturnLabel(
         is_return: true,
         packages: [{ weight: 1000, weight_unit: "g" }],
         // Ved en returforsendelse er avsender kunden, og mottaker lageret.
+        // NB: Webshipper sitt adresseskjema bruker andre feltnavn enn det man
+        // skulle tro - "name" finnes ikke, personnavn skal i "att_contact",
+        // gateadresse er "address_1" (ikke "address_line_1"), og postnummer
+        // er "zip" (ikke "zip_code"). Bekreftet mot docs.webshipper.io.
         sender_address: {
-          name: params.customer.name,
-          address_line_1: params.customer.street,
-          zip_code: params.customer.postalCode,
+          att_contact: params.customer.name,
+          address_1: params.customer.street,
+          zip: params.customer.postalCode,
           city: params.customer.city,
           country_code: params.customer.countryCode,
           email: params.customer.email,
           phone: params.customer.phone,
         },
         delivery_address: {
-          name: warehouse.name,
-          address_line_1: warehouse.street,
-          zip_code: warehouse.postalCode,
+          company_name: warehouse.name,
+          address_1: warehouse.street,
+          zip: warehouse.postalCode,
           city: warehouse.city,
           country_code: warehouse.countryCode,
         },
