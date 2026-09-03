@@ -22,21 +22,28 @@
 }
 
 .logoPlaceholder {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
   background: var(--accent);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.brandName {
+  font-size: 12px;
   font-weight: 700;
-  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .title {
   font-size: 22px;
-  margin: 0;
+  margin: 2px 0 0;
 }
 
 .intro {
