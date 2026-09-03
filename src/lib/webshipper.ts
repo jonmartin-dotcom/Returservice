@@ -148,44 +148,82 @@ export async function createReturnLabel(
     return { success: false, errorMessage: message };
   }
 
-  const shipmentId = shipmentJson?.data?.id;
+  const shipmentId: string | undefined = shipmentJson?.data?.id;
   const trackingNumber: string | undefined = shipmentJson?.data?.attributes?.tracking_number;
   const trackingUrl: string | undefined = shipmentJson?.data?.attributes?.tracking_url;
-  const labelId: string | undefined =
-    shipmentJson?.data?.relationships?.label?.data?.id || shipmentId;
 
-  if (!labelId) {
+  if (!shipmentId) {
     return {
       success: false,
-      errorMessage: "Fikk ikke noen etikett-ID tilbake fra Webshipper.",
+      errorMessage: "Fikk ikke noen forsendelses-ID tilbake fra Webshipper.",
     };
   }
 
-  let labelRes: Response;
-  try {
-    labelRes = await webshipperFetch(`/labels/${labelId}`);
-  } catch (err) {
+  // Etiketten er en egen ressurs (labels) som Webshipper genererer i
+  // bakgrunnen når forsendelsen opprettes - den er ikke alltid klar med det
+  // samme. Vi finner den via GET /labels?filter[shipment_id]=X og prøver noen
+  // ganger med kort mellomrom hvis den ikke er klar ennå.
+  const label = await fetchLabelForShipment(shipmentId);
+
+  if (!label.base64PDF) {
     return {
-      success: false,
-      errorMessage: `Forsendelse opprettet, men klarte ikke å hente etiketten: ${(err as Error).message}`,
+      success: true,
+      trackingNumber,
+      trackingUrl,
+      errorMessage: label.labelId
+        ? undefined
+        : "Forsendelse opprettet, men fant ingen etikett for den hos Webshipper.",
     };
   }
-
-  const labelJson = await labelRes.json().catch(() => null);
-
-  if (!labelRes.ok) {
-    return {
-      success: false,
-      errorMessage: `Forsendelse opprettet, men Webshipper avviste etikett-forespørselen (${labelRes.status}).`,
-    };
-  }
-
-  const labelPdfBase64: string | undefined = labelJson?.data?.attributes?.label;
 
   return {
     success: true,
     trackingNumber,
     trackingUrl,
-    labelPdfBase64,
+    labelPdfBase64: label.base64PDF,
   };
+}
+
+interface LabelLookupResult {
+  labelId?: string;
+  base64PDF?: string;
+}
+
+async function fetchLabelForShipment(shipmentId: string): Promise<LabelLookupResult> {
+  const maxAttempts = 5;
+  const delayMs = 800;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const res = await webshipperFetch(
+        `/labels?filter[shipment_id]=${encodeURIComponent(shipmentId)}`
+      );
+      if (res.ok) {
+        const json = await res.json().catch(() => null);
+        const entry = Array.isArray(json?.data) ? json.data[0] : null;
+        const base64: string | undefined = entry?.attributes?.base64 || undefined;
+        if (entry?.id && base64) {
+          return { labelId: entry.id, base64PDF: base64 };
+        }
+        // Etiketten finnes men er ikke ferdig generert ennå (base64 er null) -
+        // hent den direkte på ID-en i tilfelle det gir et ferskere svar.
+        if (entry?.id) {
+          const directRes = await webshipperFetch(`/labels/${entry.id}`);
+          if (directRes.ok) {
+            const directJson = await directRes.json().catch(() => null);
+            const directBase64: string | undefined = directJson?.data?.attributes?.base64;
+            if (directBase64) return { labelId: entry.id, base64PDF: directBase64 };
+          }
+          if (attempt === maxAttempts - 1) return { labelId: entry.id };
+        }
+      }
+    } catch {
+      // Prøver igjen under neste runde.
+    }
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return {};
 }
