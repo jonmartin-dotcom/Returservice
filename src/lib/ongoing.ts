@@ -42,6 +42,28 @@ async function ongoingFetch(path: string, init: RequestInit = {}): Promise<Respo
   });
 }
 
+/**
+ * MIDLERTIDIG DEBUG-FUNKSJON: henter det helt rå, ubehandlede svaret fra
+ * Ongoing for en ordre, uten noen tolkning av feltnavn. Brukes av
+ * /api/debug/order-lookup for å finne de faktiske feltnavnene for
+ * telefon/e-post på consignee-objektet. Fjern denne + API-ruten når det er
+ * bekreftet og "advanced"/"invoiceAddress"-feltnavnene er lagt inn riktig i
+ * pickConsigneeField-kallene.
+ */
+export async function getRawOrderForDebug(orderNumber: string): Promise<unknown> {
+  const params = new URLSearchParams({
+    goodsOwnerId: String(env.ongoingGoodsOwnerId),
+    orderNumber: orderNumber.trim(),
+  });
+  const res = await ongoingFetch(`/orders?${params.toString()}`);
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { rawText: text, status: res.status };
+  }
+}
+
 // --- Typer som gjenspeiler et utvalg av Ongoing sin GetOrderModel/GetOrderLine ---
 // (Kun feltene vi faktisk trenger er tatt med - det fulle svaret inneholder mye mer,
 // se GetOrderModel i openapi.json om dere trenger flere felter.)
