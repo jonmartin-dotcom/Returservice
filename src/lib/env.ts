@@ -51,6 +51,25 @@ export const env = {
     return required("WEBSHIPPER_SERVICE_CODE");
   },
 
+  // --- Standardmål brukt når en vare mangler vekt/mål i Ongoing (pakken må
+  // ha enten volum eller mål for at Webshipper skal godta forsendelsen) ---
+  get defaultItemWeightGrams() {
+    const v = optional("WEBSHIPPER_DEFAULT_ITEM_WEIGHT_G");
+    return v ? Number(v) : 500;
+  },
+  get defaultItemLengthCm() {
+    const v = optional("WEBSHIPPER_DEFAULT_ITEM_LENGTH_CM");
+    return v ? Number(v) : 30;
+  },
+  get defaultItemWidthCm() {
+    const v = optional("WEBSHIPPER_DEFAULT_ITEM_WIDTH_CM");
+    return v ? Number(v) : 20;
+  },
+  get defaultItemHeightCm() {
+    const v = optional("WEBSHIPPER_DEFAULT_ITEM_HEIGHT_CM");
+    return v ? Number(v) : 10;
+  },
+
   // --- Varemottaker (lagerets) adresse - dit returen skal sendes ---
   get warehouseAddress() {
     return {
