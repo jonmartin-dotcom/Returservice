@@ -171,11 +171,15 @@ export async function createReturnLabel(
   console.log("[webshipper] shipmentId=%s labelLookup=%o", shipmentId, label);
 
   if (!label.base64PDF) {
+    // Kundevendt melding holdes enkel med vilje - de tekniske detaljene
+    // (shipmentId, HTTP-status osv.) er allerede logget over til Vercel sine
+    // funksjonslogger for feilsøking.
     return {
       success: true,
       trackingNumber,
       trackingUrl,
-      errorMessage: `Fant ikke etikett-PDF automatisk (shipmentId=${shipmentId}, ${label.diagnostic || "ingen diagnostikk"}). Se Vercel-loggene for detaljer, eller sjekk forsendelsen direkte i Webshipper.`,
+      errorMessage:
+        "Fraktetiketten kunne ikke hentes automatisk akkurat nå. Ta kontakt med kundeservice, så sender vi den til deg.",
     };
   }
 
