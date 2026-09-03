@@ -1,29 +1,34 @@
+/* Fargepaletten under er tilpasset Nesco (nesco.no) sin visuelle profil:
+   varm, lys bakgrunn, mÃ¸rk skifer/navy tekst, og en rolig salvie-/lÃ¸vgrÃ¸nn
+   aksentfarge - i trÃ¥d med en nÃ¸ktern, nordisk helse-/velvÃ¦reprofil. Bytt ut
+   verdiene under hvis dere Ã¸nsker enda tettere match mot en offisiell
+   fargekode-guide fra Nesco. */
 :root {
-  --background: #f7f7f5;
+  --background: #faf8f3;
   --surface: #ffffff;
-  --foreground: #1f2320;
-  --muted: #6b7280;
-  --border: #e2e2df;
-  --accent: #1f6f4a;
-  --accent-hover: #17553a;
+  --foreground: #23302b;
+  --muted: #6d7d73;
+  --border: #e6e1d3;
+  --accent: #4f7a5c;
+  --accent-hover: #3d6149;
   --danger: #b3261e;
   --danger-bg: #fceceb;
-  --success-bg: #eaf6ef;
+  --success-bg: #eef4ec;
   --radius: 10px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #14161a;
-    --surface: #1c1f24;
-    --foreground: #f2f2f0;
-    --muted: #9aa0a6;
-    --border: #2c3036;
-    --accent: #3fae7c;
-    --accent-hover: #59c191;
+    --background: #161a17;
+    --surface: #1e2420;
+    --foreground: #f2f2ee;
+    --muted: #9aa89f;
+    --border: #2c332d;
+    --accent: #6fa27d;
+    --accent-hover: #86b892;
     --danger: #f28b82;
     --danger-bg: #3a2323;
-    --success-bg: #1c2f26;
+    --success-bg: #1e2b22;
   }
   html {
     color-scheme: dark;
