@@ -62,6 +62,18 @@ interface OngoingOrderLine {
 interface OngoingOrderConsignee {
   name?: string;
   emailAddress?: string;
+  // NB: feltnavn her er ikke 100% bekreftet mot GET /orders-svaret (kun
+  // bekreftet mot PostOrderLineModel sitt consignee-objekt, som normalt
+  // følger samme navngiving i Ongoing sin REST API). Hvis feltene under
+  // ikke plukkes opp riktig i praksis, forblir bare kontaktfeltene tomme i
+  // skjemaet - det stopper ikke returflyten.
+  streetAddressLine1?: string;
+  streetAddressLine2?: string;
+  postalCode?: string;
+  city?: string;
+  countryCode?: string;
+  phoneNumber?: string;
+  mobilePhone?: string;
 }
 
 interface OngoingOrderInfo {
@@ -130,6 +142,11 @@ export async function lookupOrderByNumber(orderNumber: string): Promise<OrderLoo
     orderNumber: order.orderInfo.orderNumber || orderNumber,
     customerName: order.consignee?.name || "",
     customerEmail: order.consignee?.emailAddress || null,
+    customerPhone: order.consignee?.phoneNumber || order.consignee?.mobilePhone || null,
+    customerStreet: order.consignee?.streetAddressLine1 || null,
+    customerPostalCode: order.consignee?.postalCode || null,
+    customerCity: order.consignee?.city || null,
+    customerCountryCode: order.consignee?.countryCode || null,
     lines,
   };
 }
