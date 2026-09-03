@@ -57,6 +57,18 @@ export default function ReturPage() {
         return;
       }
       setOrder(data);
+      // Forhåndsutfyll kontaktinfo fra mottakeren på den opprinnelige ordren,
+      // slik at kunden slipper å skrive alt på nytt - de kan fortsatt endre.
+      const nameParts = (data.customerName || "").trim().split(/\s+/);
+      if (nameParts.length > 0 && nameParts[0]) {
+        setFirstName(nameParts[0]);
+        setLastName(nameParts.slice(1).join(" "));
+      }
+      if (data.customerEmail) setEmail(data.customerEmail);
+      if (data.customerPhone) setPhone(data.customerPhone);
+      if (data.customerStreet) setStreet(data.customerStreet);
+      if (data.customerPostalCode) setPostalCode(data.customerPostalCode);
+      if (data.customerCity) setCity(data.customerCity);
       setLines(
         data.lines.map((l) => ({
           orderLineId: l.orderLineId,
@@ -368,6 +380,7 @@ export default function ReturPage() {
               Referanse: {result.returnOrderNumber}
               {result.trackingNumber ? ` · Sporingsnr: ${result.trackingNumber}` : ""}
             </p>
+            {result.warning && <div className={styles.errorBox}>{result.warning}</div>}
             {result.labelPdfBase64 ? (
               <button className={styles.primaryButton} onClick={downloadLabel}>
                 Last ned fraktetikett (PDF)
