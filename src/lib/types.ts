@@ -13,6 +13,11 @@ export const RETURN_REASONS: ReturnReasonOption[] = [
   { code: "REKLAMASJON", label: "Reklamasjon" },
 ];
 
+// Hvordan kunden ønsker å motta returforsendelsen fra Bring:
+// LABEL = vanlig PDF-etikett for utskrift, QR = QR-kode sendt på SMS/e-post
+// (Bring sin etikettfrie løsning - vises/skannes i utleveringsappen eller på skjerm).
+export type DeliveryMethod = "LABEL" | "QR";
+
 // Én ordrelinje slik den vises til kunden for utvalg av hva som skal returneres.
 export interface OrderLineForCustomer {
   orderLineId: number;
@@ -71,6 +76,9 @@ export interface ReturnRequest {
     city: string;
     countryCode: string; // f.eks. "NO"
   };
+  /** Hvilken leveringsmåte kunden valgte for returforsendelsen. Mangler feltet
+   *  (eldre klient), antas LABEL for bakoverkompatibilitet. */
+  deliveryMethod?: DeliveryMethod;
 }
 
 export interface ReturnRequestResult {
@@ -84,4 +92,6 @@ export interface ReturnRequestResult {
   /** Ikke-kritisk advarsel som fortsatt lar returen regnes som vellykket, f.eks. at
    *  etiketten ikke kunne hentes automatisk selv om forsendelsen ble opprettet. */
   warning?: string;
+  /** Ekko av hvilken leveringsmåte som faktisk ble brukt. */
+  deliveryMethod?: DeliveryMethod;
 }
