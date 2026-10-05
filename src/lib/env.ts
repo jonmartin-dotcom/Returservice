@@ -47,8 +47,15 @@ export const env = {
   get webshipperCarrierId() {
     return required("WEBSHIPPER_CARRIER_ID");
   },
+  // Servicekode for vanlig PDF-etikett (eksisterende løsning).
   get webshipperServiceCode() {
     return required("WEBSHIPPER_SERVICE_CODE");
+  },
+  // Servicekode for QR-kode-retur uten etikett (Bring "9350 - Retur til
+  // Bedrift", aktivert av nShift/Webshipper support okt. 2026). Egen,
+  // separat kode fra den vanlige etikett-tjenesten.
+  get webshipperQrServiceCode() {
+    return required("WEBSHIPPER_QR_SERVICE_CODE");
   },
 
   // --- Standardmål brukt når en vare mangler vekt/mål i Ongoing (pakken må
