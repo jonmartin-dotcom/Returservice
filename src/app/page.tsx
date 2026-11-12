@@ -431,11 +431,29 @@ export default function ReturPage() {
             </p>
             {result.warning && <div className={styles.errorBox}>{result.warning}</div>}
             {result.deliveryMethod === "QR" ? (
-              <p>
-                QR-koden er sendt til deg på SMS og e-post fra Bring. Vis den i
-                utleveringsappen eller på skjermen din når du leverer pakken hos et
-                Bring-utleveringssted.
-              </p>
+              <>
+                <p>
+                  QR-koden sendes også til deg på SMS og e-post fra Bring. Vis den i
+                  utleveringsappen eller på skjermen din når du leverer pakken hos et
+                  Bring-utleveringssted.
+                </p>
+                {result.qrCodeLink && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={result.qrCodeLink}
+                    alt="QR-kode for retur"
+                    width={180}
+                    height={180}
+                    style={{ margin: "0 auto", display: "block" }}
+                  />
+                )}
+                {result.labelFreeCode && (
+                  <p>
+                    Alternativt kan du oppgi denne koden hos utleveringsstedet:{" "}
+                    <strong>{result.labelFreeCode}</strong>
+                  </p>
+                )}
+              </>
             ) : result.labelPdfBase64 ? (
               <button className={styles.primaryButton} onClick={downloadLabel}>
                 Last ned fraktetikett (PDF)
