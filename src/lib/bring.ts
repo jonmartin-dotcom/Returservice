@@ -26,6 +26,11 @@ function authHeaders() {
     "X-MyBring-API-Uid": env.bringApiUid,
     "X-MyBring-API-Key": env.bringApiKey,
     "X-Bring-Test-Indicator": env.bringTestIndicator ? "true" : "false",
+    // Påkrevd av Bring (oppdaget via faktisk feilmelding 2026-11-12, ikke
+    // nevnt på selve Booking-siden i dokumentasjonen, kun på "Getting
+    // Started"-siden): identifiserer hvilken nettside/app som bruker
+    // API-et. Sett til appens egen URL via BRING_CLIENT_URL.
+    "X-Bring-Client-URL": env.bringClientUrl,
   };
 }
 
