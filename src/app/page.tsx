@@ -115,10 +115,11 @@ export default function ReturPage() {
       return;
     }
 
-    // QR-koden sendes direkte til kunden på SMS/e-post av Bring, så disse
-    // feltene er kritiske for det valget spesielt (de er uansett påkrevd over).
-    if (deliveryMethod === "QR" && (!phone || !email)) {
-      setError("Mobilnummer og e-post må fylles ut for å sende QR-kode.");
+    // QR-koden sendes direkte til kunden på e-post av Bring (ikke SMS - Bring
+    // sender ikke SMS for norske returer) - e-postfeltet er derfor kritisk
+    // for dette valget spesielt (det er uansett påkrevd over).
+    if (deliveryMethod === "QR" && !email) {
+      setError("E-post må fylles ut for å sende QR-kode.");
       return;
     }
 
@@ -422,7 +423,7 @@ export default function ReturPage() {
                 onClick={() => handleSubmit("QR")}
                 disabled={loading}
               >
-                {loading ? "Sender …" : "Send QR-kode (SMS/e-post)"}
+                {loading ? "Sender …" : "Send QR-kode på e-post"}
               </button>
             </div>
           </div>
@@ -439,7 +440,7 @@ export default function ReturPage() {
             {result.deliveryMethod === "QR" ? (
               <>
                 <p>
-                  QR-koden sendes også til deg på SMS og e-post fra Bring. Vis den i
+                  QR-koden sendes også til deg på e-post fra Bring. Vis den i
                   utleveringsappen eller på skjermen din når du leverer pakken hos et
                   Bring-utleveringssted.
                 </p>
