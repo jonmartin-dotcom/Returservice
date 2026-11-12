@@ -191,19 +191,35 @@ export async function createReturnShipment(
     ],
   };
 
+  // Logg selve forespørselen (ingen hemmeligheter i body - API-nøkkel ligger
+  // kun i headerne) slik at vi kan se nøyaktig hva som ble sendt hvis Bring
+  // avviser den.
+  console.log("[bring] booking-forespørsel:", JSON.stringify(body));
+
   const res = await fetch(`${baseUrl()}/create`, {
     method: "POST",
     headers: { ...JSON_HEADERS, ...authHeaders() },
     body: JSON.stringify(body),
   });
 
-  const json = await res.json().catch(() => undefined);
+  // Les alltid raw-tekst FØRST, og prøv JSON.parse på den selv, i stedet for
+  // å stole på res.json() - hvis Bring svarer med noe som ikke er gyldig
+  // JSON (tom body, HTML-feilside, annen content-type osv.), gir res.json()
+  // bare en taus feil som skjuler selve årsaken til 400-feilen. Dette var
+  // nøyaktig det som skjedde ved første test mot ekte Bring-konto
+  // (2026-11-12) - loggen viste kun "(400): undefined" uten noen detaljer.
+  const rawText = await res.text();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let json: any;
+  try {
+    json = rawText ? JSON.parse(rawText) : undefined;
+  } catch {
+    json = undefined;
+  }
 
   if (!res.ok) {
     throw new Error(
-      `Bring: kunne ikke opprette returforsendelse (${res.status}): ${JSON.stringify(
-        json
-      )}`
+      `Bring: kunne ikke opprette returforsendelse (${res.status}). Raw body: ${rawText || "(tom)"}`
     );
   }
 
