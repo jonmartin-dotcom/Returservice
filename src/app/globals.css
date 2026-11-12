@@ -1,8 +1,14 @@
-/* Fargepaletten under er tilpasset Nesco (nesco.no) sin visuelle profil:
-   varm, lys bakgrunn, mÃ¸rk skifer/navy tekst, og en rolig salvie-/lÃ¸vgrÃ¸nn
-   aksentfarge - i trÃ¥d med en nÃ¸ktern, nordisk helse-/velvÃ¦reprofil. Bytt ut
-   verdiene under hvis dere Ã¸nsker enda tettere match mot en offisiell
-   fargekode-guide fra Nesco. */
+/* Standardverdiene under er kun et fallback (brukt hvis layout.tsx av en
+   eller annen grunn ikke klarer å sette merkevare-variablene - normalt
+   overstyres --background/--surface/--foreground/--muted/--border/--accent/
+   --accent-hover/--radius/--font-family/--button-text-transform alltid
+   inline på <body> ut fra hvilket domene besøkeren kom fra, se
+   lib/brands.ts og app/layout.tsx). Fallback-paletten er Nesco sin profil.
+
+   Merk: ingen automatisk mørk modus lenger (fjernet nov. 2026 da appen ble
+   lagt om til å støtte flere merkevarer) - ingen av designmalene vi har
+   fått for utroligsalven.no/decrusto.no sier noe om en egen mørk variant,
+   så vi viser samme lyse palett uavhengig av enhetens fargemodus-innstilling. */
 :root {
   --background: #faf8f3;
   --surface: #ffffff;
@@ -15,24 +21,8 @@
   --danger-bg: #fceceb;
   --success-bg: #eef4ec;
   --radius: 10px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #161a17;
-    --surface: #1e2420;
-    --foreground: #f2f2ee;
-    --muted: #9aa89f;
-    --border: #2c332d;
-    --accent: #6fa27d;
-    --accent-hover: #86b892;
-    --danger: #f28b82;
-    --danger-bg: #3a2323;
-    --success-bg: #1e2b22;
-  }
-  html {
-    color-scheme: dark;
-  }
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --button-text-transform: none;
 }
 
 html,
@@ -45,7 +35,7 @@ body {
   min-height: 100%;
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

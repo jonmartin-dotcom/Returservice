@@ -9,6 +9,7 @@ import type {
   DeliveryMethod,
 } from "@/lib/types";
 import { RETURN_REASONS } from "@/lib/types";
+import { useBrand } from "@/lib/brand-context";
 
 type Step = "order" | "details" | "contact" | "done";
 
@@ -22,6 +23,7 @@ interface SelectedLine {
 }
 
 export default function ReturPage() {
+  const brand = useBrand();
   const [step, setStep] = useState<Step>("order");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -175,34 +177,38 @@ export default function ReturPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logoSlot}>
-          {/* Enkelt løv-merke som plassholder for Nesco sin logo - bytt ut
-              med den offisielle logofilen når dere har den klar (se
-              README.md for hvor). */}
+          {/* Logo/tittel er merkevare-styrt (se lib/brands.ts) - samme
+              oppslag for alle tre Nesco-merkevarene (nesco.no,
+              utroligsalven.no, decrusto.no), kun innholdet varierer ut fra
+              hvilket domene besøkeren kom fra. */}
           <div className={styles.logoPlaceholder} aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M4 20C4 11 10 4 20 4C20 14 13 20 4 20Z"
-                fill="currentColor"
-              />
-              <path
-                d="M4 20C8 16 12 12 18 6"
-                stroke="var(--surface)"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-            </svg>
+            {brand.logo.type === "leaf" ? (
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M4 20C4 11 10 4 20 4C20 14 13 20 4 20Z"
+                  fill="currentColor"
+                />
+                <path
+                  d="M4 20C8 16 12 12 18 6"
+                  stroke="var(--surface)"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <span>{(brand.logo.letter || "?").toUpperCase()}</span>
+            )}
           </div>
           <div>
-            <div className={styles.brandName}>Nesco</div>
-            <h1 className={styles.title}>Returservice</h1>
+            {brand.headerLabel && <div className={styles.brandName}>{brand.headerLabel}</div>}
+            <h1 className={styles.title}>{brand.headerTitle}</h1>
           </div>
         </div>
 
         {step === "order" && (
           <>
             <div className={styles.intro}>
-              Vi har åpent kjøp og bytterett i henhold til angrerettloven. Varen(e) må
-              være ubrukt og i original stand.
+              {brand.introText}
               <ol>
                 <li>Fyll inn ordrenummeret ditt for å hente opp ordren.</li>
                 <li>Velg hvilke varer du ønsker å returnere og oppgi årsak.</li>
