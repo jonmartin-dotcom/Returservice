@@ -88,6 +88,11 @@ export interface ReturnRequestResult {
   trackingNumber?: string;
   labelPdfBase64?: string;
   labelUrl?: string;
+  /** Kun satt ved deliveryMethod "QR" - lenke til en PNG av selve QR-koden. */
+  qrCodeLink?: string;
+  /** Kun satt ved deliveryMethod "QR" - kode kunden kan skrive på pakken manuelt
+   *  hvis QR-skanning ikke er tilgjengelig. */
+  labelFreeCode?: string;
   error?: string;
   /** Ikke-kritisk advarsel som fortsatt lar returen regnes som vellykket, f.eks. at
    *  etiketten ikke kunne hentes automatisk selv om forsendelsen ble opprettet. */

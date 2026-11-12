@@ -37,43 +37,54 @@ export const env = {
     return optional("ONGOING_USE_DEMO_SERVER") === "true";
   },
 
-  // --- Webshipper ---
-  get webshipperAccountName() {
-    return required("WEBSHIPPER_ACCOUNT_NAME");
+  // --- Bring Booking API (erstatter Webshipper, nov. 2026 - se
+  // prosjektnotatet "QR-kode-retur for Nesco" for bakgrunnen: vi fikk aldri
+  // SMS/e-post-utsendelsen av QR-koden til å fungere pålitelig via
+  // Webshipper sitt lag, så vi går nå direkte mot Bring sitt eget API der vi
+  // har full kontroll på feltet generateQrCodes) ---
+  // API-UID/API-key hentes fra mybring -> Kundeinnstillinger -> API-tilgang.
+  get bringApiUid() {
+    return required("BRING_API_UID");
   },
-  get webshipperAccessToken() {
-    return required("WEBSHIPPER_ACCESS_TOKEN");
+  get bringApiKey() {
+    return required("BRING_API_KEY");
   },
-  get webshipperCarrierId() {
-    return required("WEBSHIPPER_CARRIER_ID");
+  // API-kundenummer for "Pakker Norge innenlands", fra samme side i mybring
+  // (format: PARCELS_NORWAY-xxxxxxxxx).
+  get bringCustomerNumber() {
+    return required("BRING_CUSTOMER_NUMBER");
   },
-  // Servicekode for vanlig PDF-etikett (eksisterende løsning).
-  get webshipperServiceCode() {
-    return required("WEBSHIPPER_SERVICE_CODE");
+  // Produktkode for vanlig PDF-etikett-retur. Bring Service Portfolio:
+  // 9300 = "Return from pick-up point".
+  get bringReturnProductId() {
+    return optional("BRING_RETURN_PRODUCT_ID") || "9300";
   },
-  // Servicekode for QR-kode-retur uten etikett (Bring "9350 - Retur til
-  // Bedrift", aktivert av nShift/Webshipper support okt. 2026). Egen,
-  // separat kode fra den vanlige etikett-tjenesten.
-  get webshipperQrServiceCode() {
-    return required("WEBSHIPPER_QR_SERVICE_CODE");
+  // Produktkode for QR-kode/etikettfri retur. Bring Service Portfolio:
+  // 9350 = "Return parcel to business".
+  get bringQrReturnProductId() {
+    return optional("BRING_QR_RETURN_PRODUCT_ID") || "9350";
+  },
+  // "true" i test, "false" i produksjon - sendes som X-Bring-Test-Indicator.
+  get bringTestIndicator() {
+    return optional("BRING_TEST_INDICATOR") === "true";
   },
 
   // --- Standardmål brukt når en vare mangler vekt/mål i Ongoing (pakken må
-  // ha enten volum eller mål for at Webshipper skal godta forsendelsen) ---
+  // ha enten volum eller mål for at Bring skal godta forsendelsen) ---
   get defaultItemWeightGrams() {
-    const v = optional("WEBSHIPPER_DEFAULT_ITEM_WEIGHT_G");
+    const v = optional("DEFAULT_ITEM_WEIGHT_G");
     return v ? Number(v) : 500;
   },
   get defaultItemLengthCm() {
-    const v = optional("WEBSHIPPER_DEFAULT_ITEM_LENGTH_CM");
+    const v = optional("DEFAULT_ITEM_LENGTH_CM");
     return v ? Number(v) : 30;
   },
   get defaultItemWidthCm() {
-    const v = optional("WEBSHIPPER_DEFAULT_ITEM_WIDTH_CM");
+    const v = optional("DEFAULT_ITEM_WIDTH_CM");
     return v ? Number(v) : 20;
   },
   get defaultItemHeightCm() {
-    const v = optional("WEBSHIPPER_DEFAULT_ITEM_HEIGHT_CM");
+    const v = optional("DEFAULT_ITEM_HEIGHT_CM");
     return v ? Number(v) : 10;
   },
 
