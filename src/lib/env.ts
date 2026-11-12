@@ -49,6 +49,11 @@ export const env = {
   get bringApiKey() {
     return required("BRING_API_KEY");
   },
+  // Påkrevd av Bring sitt API - identifiserer appens URL for dem. Sett til
+  // appens egen Vercel-URL (f.eks. https://returservice.vercel.app).
+  get bringClientUrl() {
+    return required("BRING_CLIENT_URL");
+  },
   // API-kundenummer for "Pakker Norge innenlands", fra samme side i mybring
   // (format: PARCELS_NORWAY-xxxxxxxxx).
   get bringCustomerNumber() {
