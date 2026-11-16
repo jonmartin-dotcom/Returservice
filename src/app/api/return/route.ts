@@ -61,15 +61,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // QR-kode-returen sendes direkte til kunden på SMS/e-post av Bring, og
-    // kunden må derfor ha oppgitt begge deler - de er allerede påkrevd i
-    // skjemaet, men vi sjekker eksplisitt siden det er kritisk for denne
-    // leveringsmåten.
-    if (deliveryMethod === "QR" && (!body.phone || !body.email)) {
+    // QR-kode-returen sendes direkte til kunden på e-post av Bring, og
+    // kunden må derfor ha oppgitt e-post - allerede påkrevd i skjemaet, men
+    // vi sjekker eksplisitt siden det er kritisk for denne leveringsmåten.
+    if (deliveryMethod === "QR" && !body.email) {
       return NextResponse.json<ReturnRequestResult>(
         {
           success: false,
-          error: "Mobilnummer og e-post må fylles ut for å sende QR-kode.",
+          error: "E-post må fylles ut for å sende QR-kode.",
         },
         { status: 400 }
       );
@@ -184,7 +183,7 @@ export async function POST(req: NextRequest) {
     }
     if (deliveryMethod === "QR" && !shipment.qrCodeLink && !shipment.labelFreeCode) {
       result.warning =
-        "Returen er registrert, men QR-koden kunne ikke hentes akkurat nå. Du vil få den tilsendt på SMS/e-post fra Bring.";
+        "Returen er registrert, men QR-koden kunne ikke hentes akkurat nå. Du vil få den tilsendt på e-post fra Bring.";
     }
 
     return NextResponse.json<ReturnRequestResult>(result);
