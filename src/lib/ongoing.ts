@@ -111,13 +111,21 @@ function pickConsigneeField(
 }
 
 /**
- * Slår opp en ordre på ordrenummer for den konfigurerte varemottakeren (goods owner),
- * og returnerer et forenklet objekt med linjene kunden kan velge å returnere.
+ * Ordre som kommer inn fra Shopify/Tripletex får et løpenummer lagt til i
+ * Ongoing (f.eks. kundens "174630" blir "174630-2" i Ongoing). Kunden kjenner
+ * bare det opprinnelige nummeret. Hvis et eksakt oppslag ikke gir treff,
+ * prøver vi derfor "<nummer>-1" til "<nummer>-MAX_ORDER_SUFFIX".
  */
-export async function lookupOrderByNumber(orderNumber: string): Promise<OrderLookupResponse> {
+const MAX_ORDER_SUFFIX = 9;
+
+type FetchOrderResult =
+  | { ok: true; order: OngoingOrderModel | null }
+  | { ok: false; error: OrderLookupResponse };
+
+async function fetchOrderExact(orderNumber: string): Promise<FetchOrderResult> {
   const params = new URLSearchParams({
     goodsOwnerId: String(env.ongoingGoodsOwnerId),
-    orderNumber: orderNumber.trim(),
+    orderNumber,
   });
 
   let res: Response;
@@ -125,22 +133,77 @@ export async function lookupOrderByNumber(orderNumber: string): Promise<OrderLoo
     res = await ongoingFetch(`/orders?${params.toString()}`);
   } catch (err) {
     return {
-      found: false,
-      reason: "ERROR",
-      message: `Klarte ikke å kontakte Ongoing WMS: ${(err as Error).message}`,
+      ok: false,
+      error: {
+        found: false,
+        reason: "ERROR",
+        message: `Klarte ikke å kontakte Ongoing WMS: ${(err as Error).message}`,
+      },
     };
   }
 
   if (!res.ok) {
     return {
-      found: false,
-      reason: "ERROR",
-      message: `Ongoing WMS svarte med feil (${res.status}).`,
+      ok: false,
+      error: {
+        found: false,
+        reason: "ERROR",
+        message: `Ongoing WMS svarte med feil (${res.status}).`,
+      },
     };
   }
 
-  const orders = (await res.json()) as OngoingOrderModel[];
-  const order = orders?.[0];
+  const orders = (await res.json().catch(() => null)) as OngoingOrderModel[] | null;
+  const order = Array.isArray(orders) ? orders[0] : null;
+  return { ok: true, order: order && order.orderInfo ? order : null };
+}
+
+/** Fjerner mellomrom og en eventuell "#" foran (Shopify viser "#174630"). */
+function normalizeOrderNumber(input: string): string {
+  return input.trim().replace(/^#+\s*/, "").trim();
+}
+
+/**
+ * Slår opp en ordre på ordrenummer for den konfigurerte varemottakeren (goods owner),
+ * og returnerer et forenklet objekt med linjene kunden kan velge å returnere.
+ */
+export async function lookupOrderByNumber(orderNumber: string): Promise<OrderLookupResponse> {
+  const normalized = normalizeOrderNumber(orderNumber);
+
+  // 1) Eksakt treff (dekker også at kunden selv skriver "174630-2").
+  const exact = await fetchOrderExact(normalized);
+  if (!exact.ok) return exact.error;
+  let order = exact.order;
+
+  // 2) Ingen eksakt treff: prøv med løpenummer fra Shopify/Tripletex.
+  //    Gjøres bare når kunden ikke allerede har skrevet et "-<tall>" selv.
+  if (!order && !/-\d+$/.test(normalized)) {
+    const candidates = Array.from(
+      { length: MAX_ORDER_SUFFIX },
+      (_, i) => `${normalized}-${i + 1}`
+    );
+    const results = await Promise.all(candidates.map(fetchOrderExact));
+
+    const matches = results
+      .map((r, i) => ({ number: candidates[i], order: r.ok ? r.order : null }))
+      .filter((m): m is { number: string; order: OngoingOrderModel } => m.order !== null);
+
+    if (matches.length > 1) {
+      console.log(
+        `[ongoing] flere ordre matcher "${normalized}": ${matches
+          .map((m) => m.number)
+          .join(", ")} - bruker den nyeste (${matches[matches.length - 1].number})`
+      );
+    }
+    // Høyeste løpenummer = sist opprettet versjon av ordren.
+    order = matches.length > 0 ? matches[matches.length - 1].order : null;
+
+    // Ingen treff, og minst ett kall feilet: vis feilen i stedet for "finnes ikke".
+    if (!order) {
+      const failed = results.find((r) => !r.ok);
+      if (failed && !failed.ok) return failed.error;
+    }
+  }
 
   if (!order || !order.orderInfo) {
     return {
